@@ -16,6 +16,32 @@ app.post("/signup", async(req,res)=>{
     }
 })
 
+app.get("/user",async(req,res)=>{
+    const userEmail = req.body.emailId;
+    try{
+    const user = await User.find({emailId: userEmail}); //find the specific user
+    if(user.length ===0){
+        res.status(404).send("user not found");
+    }
+    else{
+        res.send(user);
+    }
+    }
+    catch(err){
+        res.status(404).send("Something went wrong");
+    }
+})
+
+app.get("/feed",async(req,res)=>{
+    try{
+        const users = await User.find({}); // print the all users
+        res.send(users);
+    }
+    catch(err){
+        res.status(404).send("Something went wrong");
+    }
+})
+
 connectDB()
 .then(()=>{
     console.log("Database connection established..");
