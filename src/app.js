@@ -12,7 +12,7 @@ app.post("/signup", async(req,res)=>{
         res.send("Data added sucessfully");
     }
     catch(err){
-        res.status(404).send("error will occured");
+        res.status(404).send("error will occured:" +err.message);
     }
 })
 // find the user by providing some data
@@ -88,7 +88,7 @@ app.patch("/user/:userId",async(req,res)=>{
         res.send("update data sucessfully");
     }
     catch(err){
-        res.status(404).send("Update Failed" +err.message);
+        res.status(404).send("Updation Failed: " +err.message);
     }
 })
 // update the user data by the help of emailId
