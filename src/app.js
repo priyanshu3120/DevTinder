@@ -3,9 +3,13 @@ const connectDB = require("./config/database");
 const User = require("./models/user");
 const {validateSignUpData} = require("./utils/validation");
 const bcrypt = require("bcrypt");
+const cookieParser = require("cookie-parser");
+const jwt = require("jsonwebtoken");
+const {userAuth} = require("./middleware/auth");
 const app = express();
 
-app.use(express.json());
+app.use(express.json()); // middleware
+app.use(cookieParser());
 
 app.post("/signup", async(req,res)=>{
     
@@ -13,7 +17,7 @@ app.post("/signup", async(req,res)=>{
         // validation of data
         validateSignUpData(req);
         // Encrypt the password
-        const {firstName,lastName,emailId,password,gender} = req.body;
+        const {firstName,lastName,emailId,password} = req.body;
         
         const passwordHash = await bcrypt.hash(password,10); // Encrypt the password at 10 times
         const user = new User({
@@ -21,7 +25,6 @@ app.post("/signup", async(req,res)=>{
             lastName,
             emailId,
             password: passwordHash,
-            gender,
         });
         await user.save();
         res.send("Data added sucessfully");
@@ -38,8 +41,13 @@ app.post("/login",async(req,res)=>{
       if(!user){
         throw new Error("Invalid credentials");
       }
-      const isPasswordValid = await bcrypt.compare(password,user.password);
+      const isPasswordValid = await user.validatePassword(password);
       if(isPasswordValid){
+        const token = await user.getJWT();
+       
+        res.cookie("token",token,{
+            expires: new Date(Date.now() + 8 * 3600000),
+        });
         res.send("login Successfully!!!");
       }
       else{
@@ -50,94 +58,21 @@ app.post("/login",async(req,res)=>{
         res.status(404).send("ERROR : " + err.message);
     }
 });
-// find the user by providing some data
-app.get("/user",async(req,res)=>{
-    const userEmail = req.body.emailId;
+
+app.get("/profile", userAuth ,async(req,res)=>{
     try{
-    const user = await User.find({emailId: userEmail}); //find the specific user
-    if(user.length ===0){
-        res.status(404).send("user not found");
-    }
-    else{
+        const user =req.user;
         res.send(user);
     }
-    }
     catch(err){
-        res.status(404).send("Something went wrong");
+        res.status(404).send("ERROR : " + err.message);
     }
 });
-// find all the user 
-app.get("/feed",async(req,res)=>{
-    try{
-        const users = await User.find({}); // print the all users
-        res.send(users);
-    }
-    catch(err){
-        res.status(404).send("Something went wrong");
-    }
-});
-// find user by an id
-app.get("/id",async(req,res)=>{
-    try{
-        const id="68d45bd761f04d99bd8960c6"
-        const users = await User.findById(id);
-        res.send(users);
-    }
-    catch(err){
-        res.status(404).send("Something went wrong");
-    }
-});
-// delete user from database
-app.delete("/user",async(req,res)=>{
-    const userId=req.body.userId;
-    try{
-        const user = await User.findByIdAndDelete(userId);
-        res.send("Data deleted sucessfully");
-    }
-    catch(err){
-        res.status(404).send("Something went wrong");
-    }
-});
-// update the user data by the help of userId
-app.patch("/user/:userId",async(req,res)=>{
-    const userId = req.body.params?.userId;
-    const data = req.body;
-    try{
-        const Allowed_Updates = [
-            "gender","age","photoUrl","skills","about"
-        ];
-        const isUpdateAllowed = Object.keys(data).every((k)=>
-            Allowed_Updates.includes(k)
-        );
-        if(!isUpdateAllowed)
-        {
-            throw new Error("Update not allowed");
-        }
-        if(data?.skills.length > 10)
-        {
-            throw new Error("skills cannot more than 10");
-        }
-        const user = await User.findByIdAndUpdate(userId,data,{
-        runValidators:true,
-        });
-        res.send("update data sucessfully");
-    }
-    catch(err){
-        res.status(404).send("Updation Failed: " +err.message);
-    }
-});
-// update the user data by the help of emailId
-app.patch("/user1",async(req,res)=>{
-    const userEmail = req.body.emailId;
-    const data = req.body;
-    try{
-        await User.findOneAndUpdate({emailId: userEmail},data);
-        res.send("update data sucessfully");
-    }
-    catch(err){
-        res.status(404).send("Something went wrong");
-    }
-});
+
+app.post("/sendConnectionRequest", userAuth , async(req,res)=>{
+    const user = req.user;
+    res.send(user.firstName +" " +"send the connection request");
+})
 
 connectDB()
 .then(()=>{
