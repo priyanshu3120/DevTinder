@@ -1,5 +1,7 @@
 const express = require("express");
 const profileRouter = express.Router();
+const bcrypt =require("bcrypt");
+const User = require("../models/user");
 
 const {userAuth} = require("../middleware/auth");
 const {validateEditProfileData} = require("../utils/validation");
@@ -32,6 +34,29 @@ profileRouter.patch("/profile/edit", userAuth, async(req,res)=>{
     }
     catch(err){
         res.status(404).send("ERROR : " + err.message);
+    }
+});
+
+profileRouter.patch("/forget-password", async(req,res)=>{
+    try{
+        const {emailId , password} = req.body;
+
+        if(!emailId || !password){
+            throw new Error("Email and password is required");
+        }
+        const user = await User.findOne({emailId});
+        if(!user){
+            throw new Error("User not found");
+        }
+
+        const hashPassword = await bcrypt.hash(password,10);
+        user.password = hashPassword;
+        await user.save();
+
+        res.json({message: "password updated successfully!!"});
+    }
+    catch(err){
+        res.status(404).send("ERROR : " +err.message);
     }
 })
 
